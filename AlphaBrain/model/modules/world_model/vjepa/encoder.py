@@ -211,10 +211,9 @@ class VJEPAEncoder(BaseWorldModelEncoder):
         if ckpt_path and os.path.isfile(ckpt_path):
             self._load_weights(ckpt_path)
         elif ckpt_path:
-            logger.warning(
-                "Checkpoint path specified but file not found: %s. "
-                "Encoder initialized with random weights.",
-                ckpt_path,
+            raise FileNotFoundError(
+                f"V-JEPA checkpoint_path not found: {ckpt_path}. "
+                "Please provide a valid checkpoint file."
             )
         else:
             logger.info("No checkpoint_path provided; using random initialization.")

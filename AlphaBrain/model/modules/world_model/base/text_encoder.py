@@ -122,6 +122,15 @@ class LightweightTextEncoder(nn.Module):
         if self.tokenizer is None or self.text_model is None:
             raise RuntimeError("Text model not initialized.")
 
+        # In DeepSpeed/ZeRO runs, frozen submodules can remain on CPU if they are
+        # excluded from optimizer-managed parameter groups. Ensure the text encoder
+        # and projection always match the runtime device used for token tensors.
+        text_dev = next(self.text_model.parameters()).device
+        if text_dev != device:
+            self.text_model = self.text_model.to(device)
+        if self.projection is not None and self.projection.weight.device != device:
+            self.projection = self.projection.to(device)
+
         tokens = self.tokenizer(
             texts,
             return_tensors="pt",
@@ -144,4 +153,3 @@ class LightweightTextEncoder(nn.Module):
         if device is None:
             device = next(self.parameters()).device
         return self.encode(texts, device)
-

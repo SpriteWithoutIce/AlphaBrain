@@ -231,8 +231,12 @@ class M1Inference:
 
         if mask[6]:  # PaliGemmaOFT: gripper is masked (unnormed), don't binarize here
             pass
-        else:  # LlamaOFT: gripper is unmasked, binarize before unnorm (legacy behavior)
-            normalized_actions[:, 6] = np.where(normalized_actions[:, 6] < 0.5, 0, 1)
+        else:
+            # Unmasked gripper usually follows low=open, high=close in [-1, 1].
+            # Convert to open_gripper in {0,1} for downstream eval:
+            #   value < 0  -> open  -> 1
+            #   value >= 0 -> close -> 0
+            normalized_actions[:, 6] = np.where(normalized_actions[:, 6] < 0.0, 1.0, 0.0)
 
         actions = np.where(
             mask,

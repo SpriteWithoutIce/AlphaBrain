@@ -68,6 +68,58 @@ def _binarize_gripper_open(open_val: Union[np.ndarray, float]) -> np.ndarray:
     return np.asarray([bin_val], dtype=np.float32)
 
 
+class GripperPostProcessor:
+    """Hysteresis + sticky hold for robust gripper binarization."""
+
+    def __init__(
+        self,
+        open_threshold: float = 0.6,
+        close_threshold: float = 0.4,
+        min_hold_steps: int = 2,
+        invert_open_value: bool = False,
+    ):
+        if not (0.0 <= close_threshold <= open_threshold <= 1.0):
+            raise ValueError(
+                f"Invalid gripper thresholds: close={close_threshold}, open={open_threshold}. "
+                "Expect 0 <= close <= open <= 1."
+            )
+        self.open_threshold = float(open_threshold)
+        self.close_threshold = float(close_threshold)
+        self.min_hold_steps = int(max(0, min_hold_steps))
+        self.invert_open_value = bool(invert_open_value)
+        self._is_open = None
+        self._hold_countdown = 0
+
+    def reset(self):
+        self._is_open = None
+        self._hold_countdown = 0
+
+    def binarize(self, open_val: Union[np.ndarray, float]) -> np.ndarray:
+        arr = np.asarray(open_val, dtype=np.float32).reshape(-1)
+        v = float(arr[0])
+        if self.invert_open_value:
+            v = 1.0 - v
+
+        if self._is_open is None:
+            self._is_open = (v > 0.5)
+        else:
+            if self._hold_countdown > 0:
+                self._hold_countdown -= 1
+            else:
+                desired_open = self._is_open
+                if v >= self.open_threshold:
+                    desired_open = True
+                elif v <= self.close_threshold:
+                    desired_open = False
+
+                if desired_open != self._is_open:
+                    self._is_open = desired_open
+                    self._hold_countdown = self.min_hold_steps
+
+        # dataset open/close -> LIBERO robosuite {-1,+1}
+        return np.asarray([-1.0 if self._is_open else 1.0], dtype=np.float32)
+
+
 @dataclasses.dataclass
 class Args:
     host: str = "127.0.0.1"
@@ -100,6 +152,10 @@ class Args:
     num_views: int = 2  # Number of camera views to send (1=primary only, 2=primary+wrist)
 
     norm_mode: str = "q99"  # "q99" → q01/q99 percentile (VLA default); "min_max" → absolute min/max (ACT)
+    gripper_open_threshold: float = 0.6
+    gripper_close_threshold: float = 0.4
+    gripper_min_hold_steps: int = 2
+    invert_open_gripper: bool = False
 
 
 
@@ -192,6 +248,12 @@ def eval_libero(args: Args) -> None:
 
             logging.info(f"{_CC}Starting episode {_CH}{task_episodes + 1}{_C0}{_CC}...{_C0}")
             step = 0
+            gripper_post = GripperPostProcessor(
+                open_threshold=args.gripper_open_threshold,
+                close_threshold=args.gripper_close_threshold,
+                min_hold_steps=args.gripper_min_hold_steps,
+                invert_open_value=args.invert_open_gripper,
+            )
             
             # full_actions = np.load("./debug/action.npy")
 
@@ -263,7 +325,7 @@ def eval_libero(args: Args) -> None:
                 world_vector_delta = np.asarray(raw_action.get("world_vector"), dtype=np.float32).reshape(-1)
                 rotation_delta = np.asarray(raw_action.get("rotation_delta"), dtype=np.float32).reshape(-1)
                 open_gripper = np.asarray(raw_action.get("open_gripper"), dtype=np.float32).reshape(-1)
-                gripper = _binarize_gripper_open(open_gripper)
+                gripper = gripper_post.binarize(open_gripper)
                 if step < 3 or step % 50 == 0:
                     logging.info(f"[GRIP DEBUG] step={step} open_gripper={open_gripper} → binarized={gripper}")
 

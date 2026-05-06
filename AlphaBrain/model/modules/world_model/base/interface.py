@@ -45,6 +45,7 @@ class WorldModelVLMInterface(nn.Module):
             text_hidden_size=getattr(wm_cfg, "text_hidden_size", 512),
             fusion_type=getattr(wm_cfg, "fusion_type", "cross_attention"),
             num_fusion_layers=getattr(wm_cfg, "num_fusion_layers", 2),
+            freeze_encoder=getattr(wm_cfg, "freeze_encoder", False),
             image_size=getattr(wm_cfg, "image_size", 384),
             use_intermediate_features=getattr(wm_cfg, "use_intermediate_features", False),
             intermediate_layer_ids=getattr(wm_cfg, "intermediate_layer_ids", None),

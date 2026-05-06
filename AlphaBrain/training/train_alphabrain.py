@@ -120,6 +120,27 @@ def load_fast_tokenizer():
 
 def setup_directories(cfg) -> Path:
     """create output directory and save config"""
+    timestamp = None
+    run_id = str(cfg.run_id)
+    append_ts = bool(getattr(cfg, "append_timestamp_to_run_id", False))
+    has_ts_placeholder = "{timestamp}" in run_id
+
+    if append_ts or has_ts_placeholder:
+        if dist.is_initialized():
+            ts_obj = [None]
+            if dist.get_rank() == 0:
+                ts_obj[0] = datetime.now().strftime("%Y%m%d_%H%M%S")
+            dist.broadcast_object_list(ts_obj, src=0)
+            timestamp = ts_obj[0]
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    if has_ts_placeholder:
+        run_id = run_id.replace("{timestamp}", timestamp)
+    elif append_ts:
+        run_id = f"{run_id}-{timestamp}"
+
+    cfg.run_id = run_id
     cfg.output_dir = os.path.join(cfg.output_root_dir, cfg.run_id)
     output_dir = Path(cfg.output_dir)
 
@@ -311,6 +332,7 @@ class VLATrainer(TrainerUtils):
             self.model = torch.compile(self.model, mode=compile_mode)
 
         #  print model trainable parameters:
+        self._log_module_parameter_breakdown(self.model)
         self.print_trainable_parameters(self.model)
 
         # initialize distributed training components
@@ -331,6 +353,60 @@ class VLATrainer(TrainerUtils):
             self.ema_model.eval()
             for p in self.ema_model.parameters():
                 p.requires_grad_(False)
+
+    def _log_module_parameter_breakdown(self, model: torch.nn.Module) -> None:
+        """Log parameter counts per top-level module before distributed wrapping."""
+        if dist.is_initialized() and dist.get_rank() != 0:
+            return
+
+        total_params = 0
+        seen_total = set()
+        for p in model.parameters():
+            pid = id(p)
+            if pid in seen_total:
+                continue
+            seen_total.add(pid)
+            total_params += p.numel()
+
+        rows = []
+        for name, module in model.named_children():
+            module_total = 0
+            module_trainable = 0
+            seen = set()
+            for p in module.parameters():
+                pid = id(p)
+                if pid in seen:
+                    continue
+                seen.add(pid)
+                n = p.numel()
+                module_total += n
+                if p.requires_grad:
+                    module_trainable += n
+            if module_total == 0:
+                continue
+            rows.append((name, module_total, module_trainable))
+
+        # Parameters registered directly on the root module (not in children)
+        root_total = 0
+        root_trainable = 0
+        for p in model.parameters(recurse=False):
+            n = p.numel()
+            root_total += n
+            if p.requires_grad:
+                root_trainable += n
+        if root_total > 0:
+            rows.append(("__root__", root_total, root_trainable))
+
+        rows.sort(key=lambda x: x[1], reverse=True)
+
+        logger.info("[Params] Per-module breakdown (top-level):")
+        for name, module_total, module_trainable in rows:
+            pct = (100.0 * module_total / total_params) if total_params > 0 else 0.0
+            logger.info(
+                f"[Params] {name:<28} total={module_total/1e6:8.2f}M  "
+                f"trainable={module_trainable/1e6:8.2f}M  share={pct:6.2f}%"
+            )
+        logger.info(f"[Params] TOTAL{'':<23} total={total_params/1e6:8.2f}M")
 
 
     def _adjust_lr_scheduler_for_resume(self):

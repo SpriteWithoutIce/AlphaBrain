@@ -67,6 +67,7 @@ framework:
     vjepa_interpolate_rope: true
 output_root_dir: ./results/training
 run_id: WM-VJEPA-v1
+append_timestamp_to_run_id: true
 seed: 42
 trainer:
   eval_interval: 99999
