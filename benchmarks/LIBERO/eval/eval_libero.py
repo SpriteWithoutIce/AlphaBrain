@@ -67,6 +67,11 @@ def _binarize_gripper_open(open_val: Union[np.ndarray, float]) -> np.ndarray:
     bin_val = 1.0 - 2.0 * float(v > 0.5)  # 0→+1(close), 1→-1(open)
     return np.asarray([bin_val], dtype=np.float32)
 
+def _invert_gripper_action(open_val: Union[np.ndarray, float]) -> np.ndarray:
+    arr = np.asarray(open_val, dtype=np.float32).reshape(-1)
+    v = float(arr[0])
+    bin_val = v * -1.0
+    return np.asarray([bin_val], dtype=np.float32)
 
 class GripperPostProcessor:
     """Hysteresis + sticky hold for robust gripper binarization."""

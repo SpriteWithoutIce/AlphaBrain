@@ -122,7 +122,7 @@ class ModelClient:
             
             normalized_actions = normalized_actions[0]    
             self.raw_actions = self.unnormalize_actions(normalized_actions=normalized_actions, action_norm_stats=self.action_norm_stats)
-        
+            
         raw_actions = self.raw_actions[step % action_chunk_size][None]    
 
         raw_action = {
@@ -132,7 +132,15 @@ class ModelClient:
         }
 
         return {"raw_action": raw_action}
-
+    
+    @staticmethod
+    def process_action(action):
+        normalized_action = action.copy()
+        orig_low, orig_high = 0.0, 1.0
+        normalized_action[..., -1] = 2 * (normalized_action[..., -1] - orig_low) / (orig_high - orig_low) - 1
+        normalized_action[..., -1] = np.sign(normalized_action[..., -1])
+        return normalized_action
+        
     @staticmethod
     def unnormalize_actions(normalized_actions: np.ndarray, action_norm_stats: Dict[str, np.ndarray]) -> np.ndarray:
         # Auto-detect normalization mode from stats
@@ -145,7 +153,10 @@ class ModelClient:
         action_high = np.array(action_norm_stats[ref_key_high])
         action_low = np.array(action_norm_stats[ref_key_low])
         normalized_actions = np.clip(normalized_actions, -1, 1)
-        normalized_actions[:, 6] = np.where(normalized_actions[:, 6] < 0.5, 0, 1)
+        # normalized_actions[:, 6] = np.where(normalized_actions[:, 6] < 0.5, 0, 1)
+        orig_low, orig_high = 0.0, 1.0
+        normalized_actions[:, 6] = 2 * (normalized_actions[:, 6] - orig_low) / (orig_high - orig_low) - 1
+        normalized_actions[:, 6] = np.sign(normalized_actions[:, 6])
         actions = np.where(
             mask,
             0.5 * (normalized_actions + 1) * (action_high - action_low) + action_low,

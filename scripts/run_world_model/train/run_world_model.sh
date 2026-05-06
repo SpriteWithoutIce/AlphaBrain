@@ -31,7 +31,9 @@
 #   LOG_FREQ         console/wandb log every N steps    (default: from recipe)
 # =============================================================================
 set -euo pipefail
-
+mkdir -p logs
+PYTHONUNBUFFERED=1
+PYTHONWARNINGS="ignore"
 # -- Resolve project root -----------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
@@ -48,7 +50,7 @@ fi
 find . -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 # -- Model selection ----------------------------------------------------------
-MODEL="${MODEL:-cos2}"
+MODEL="${MODEL:-vjepa}"
 case "${MODEL}" in
     cos2)        DEFAULT_PORT=29500 ;;
     cos25_4gpu)  DEFAULT_PORT=29501 ;;
@@ -116,4 +118,5 @@ python -m accelerate.commands.launch \
     --main_process_port "${MASTER_PORT}" \
     AlphaBrain/training/train_alphabrain.py \
     --config_yaml "${CONFIG_YAML}" \
-    "${OVERRIDE_ARGS[@]}"
+    "${OVERRIDE_ARGS[@]}" \
+    > logs/wm_cos2_$(date +%Y%m%d_%H%M%S).log 2>&1

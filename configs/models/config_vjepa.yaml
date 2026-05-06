@@ -3,20 +3,20 @@ common:
 datasets:
   vla_data:
     action_type: delta_qpos
-    data_root_dir: data/datasets/libero_datasets
+    data_root_dir: /home/jwhe/linyihan/datasets/libero_mujoco3.3.2
     dataloader_module: lerobot_datasets
     dataset_mix: libero_all
     include_state: false
     load_all_data_for_training: true
     obs:
     - image_0
-    per_device_batch_size: 16
+    per_device_batch_size: 32
     sequential_step_sampling: false
     video_backend: torchvision_av
 environment:
-  wandb_base_url: https://api.bandw.top
+  wandb_base_url: https://api.wandb.ai
   wandb_entity: ''
-  wandb_mode: disabled
+  wandb_mode: online
   wandb_project: WM-Ex
 framework:
   action_model:
@@ -46,14 +46,14 @@ framework:
     base_vlm: world_model-vjepa2
   world_model:
     backend: vjepa2
-    checkpoint_path: data/pretrained_models/vjepa2/vjepa2_1_vitG_384.pt
-    freeze_encoder: false
+    checkpoint_path: /home/jwhe/linyihan/CKPT/vjepa2_1_vitG_384.pt
+    freeze_encoder: true
     fusion_type: cross_attention
     hidden_size: 1024
     image_size: 384
     num_fusion_layers: 2
-    pretrained_dir: data/pretrained_models/vjepa2
-    text_encoder_path: data/pretrained_models/t5-small
+    pretrained_dir: /home/jwhe/linyihan/CKPT/vjepa2-vitl-fpc64-256
+    text_encoder_path: /home/jwhe/linyihan/CKPT/t5-small
     text_encoder_type: t5-small
     text_hidden_size: 512
     use_intermediate_features: false
@@ -66,12 +66,12 @@ framework:
     vjepa_use_rope: true
     vjepa_interpolate_rope: true
 output_root_dir: ./results/training
-run_id: WM-VJEPA-v1
+run_id: WM-VJEPA-freeze_encoder
 append_timestamp_to_run_id: true
 seed: 42
 trainer:
   eval_interval: 99999
-  gradient_accumulation_steps: 1
+  gradient_accumulation_steps: 2
   gradient_clipping: 1.0
   is_resume: false
   learning_rate:
@@ -80,7 +80,7 @@ trainer:
     qwen_vl_interface: 1.0e-05
   logging_frequency: 1
   lr_scheduler_type: cosine_with_min_lr
-  max_train_steps: 30000
+  max_train_steps: 100000
   num_warmup_steps: 5000
   optimizer:
     betas:
@@ -88,7 +88,7 @@ trainer:
     - 0.95
     eps: 1.0e-08
     weight_decay: 1.0e-08
-  save_interval: 5000
+  save_interval: 10000
   save_training_state: false
   scheduler_specific_kwargs:
     min_lr: 1.0e-06

@@ -19,13 +19,13 @@ import json
 
 TEXT_ENCODER_PATH = os.environ.get(
     "TEXT_ENCODER_DIR",
-    "data/pretrained_models/Cosmos-Predict2-2B-Video2World/text_encoder",
+    "/home/jwhe/linyihan/CKPT/Cosmos-Predict2-2B-Video2World/text_encoder",
 )
 TOKENIZER_PATH = os.environ.get(
     "TOKENIZER_DIR",
-    "data/pretrained_models/Cosmos-Predict2-2B-Video2World/tokenizer",
+    "/home/jwhe/linyihan/CKPT/Cosmos-Predict2-2B-Video2World/tokenizer",
 )
-DATA_ROOT = os.environ.get("DATA_ROOT", "data/datasets/libero_datasets")
+DATA_ROOT = os.environ.get("DATA_ROOT", "/home/jwhe/linyihan/datasets/libero_mujoco3.3.2")
 OUTPUT_PATH = os.environ.get("OUTPUT_PATH", os.path.join(DATA_ROOT, "t5_text_embeddings.pkl"))
 
 # Collect all unique LIBERO instructions

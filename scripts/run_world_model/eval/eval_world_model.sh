@@ -28,8 +28,8 @@
 set -euo pipefail
 
 CKPT="${CKPT:?Error: CKPT must be set to a checkpoint directory}"
-TASK_SUITE="${TASK_SUITE:-libero_goal}"
-NUM_TRIALS="${NUM_TRIALS:-3}"
+TASK_SUITE="${TASK_SUITE:-libero_spatial}"
+NUM_TRIALS="${NUM_TRIALS:-10}"
 GPU_ID="${GPU_ID:-0}"
 PORT="${PORT:-5694}"
 HOST="${HOST:-127.0.0.1}"
@@ -40,7 +40,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${PROJECT_ROOT}"
 
 PYTHON="${PYTHON:-python}"
-LIBERO_HOME="${LIBERO_HOME:?set LIBERO_HOME to your LIBERO repo path}"
+LIBERO_HOME="${LIBERO_HOME:-/home/jwhe/linyihan/LIBERO}"
 
 export PYTHONPATH="${PROJECT_ROOT}:${LIBERO_HOME}:${PYTHONPATH:-}"
 export MUJOCO_GL=egl
